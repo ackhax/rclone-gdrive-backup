@@ -1,15 +1,22 @@
 # Scheduled, Encrypted, Backups with RClone and GDrive
+
 ## Outcomes
+
 - Create a Google Drive account for storage
 - Sync/Copy files (encrypting them) from a local directory to GDrive using RClone
 - Create a script to run on a schedule
+
 ## Requirements
+
 - Linux server (preferably Ubuntu) with access to file share
 - Rclone https://rclone.org/
 - Google Drive for Business (https://gsuite.google.com/products/drive/)
 - Minimal bash scripting knowledge
+
 ## How-To
+
 ### Google Drive
+
 I won't detail too much about Google Drive.  The point is, you need access to a GDrive with enough space to store you backups.
 Google Drive for business is an effective way to have cheap, unlimited storage.  As of this writing, the cost is $10/mo/user.
 They state that with less than 5 users, the storage limit is 1TB, though in practice this is not enforced.  Keep in mind that
@@ -19,6 +26,7 @@ provider.
 1. Get a Google Drive account
 2. Create a directory in the root Drive called 'backups' (I will provide more detail later)
 ### Google Drive API (Optional)
+
 This step is optional, but when we set up rclone, we will have the option to provide our own API credentials.  In my opinion,
 this should be done as then we don't have to rely on rclone's API limitations.
 1. Go to console.debelopers.google.com
@@ -30,16 +38,20 @@ this should be done as then we don't have to rely on rclone's API limitations.
 7. Create a new OAuth ClientID
    - Select "Other"
 8. The Client ID and Client Secret will be used when we configure rclone
+
 ### Rclone
+
 #### Installing
 Installing Rclone is fairly simple with Linux.  Use their provided install script to make it very simple: (As always, be
 cautious when pasting executable commands and running foreign scripts on your machines!)
 1. curl https://rclone.org/install.sh | sudo bash
+
 #### Configuration
 RClone configuration can be a little confusing and overwhelming.  With experience you can understand more of what is going on,
 but I will just outline the basics.  Rclone uses what they call 'remotes' to define locations and actions for cloning files. We
 will be using multiple remotes.  There will be one 'regular' remote and multiple encrypted remotes for each directory we are
 copying. To create the primary remote, do the following:
+
 1. rclone config (This will prompt for many different options, answer them as follows:
    - n/r/c/s/q> n	(new remote)
    - name> remote	(the name you want to use)
@@ -62,15 +74,19 @@ copying. To create the primary remote, do the following:
      - Whichever you choose, follow the promptings and get your authorization code.
    - y/n> n		(this is for configuring a Team Drive, which we did not do. Enter no)
    - y/e/d> y		(assuming the configuration printing looks correct, enter yes)
+   
 If the configuration worked properly, running this command should list your one directory in your drive:
+
 2. rclone lsd remote:
 > user@ubuntu:~$ rclone lsd remote:
 > -1 2018-01-01 12:00:00	-1 backups
+
 The next step will be to create the encrypted remotes so that we can copy our data over in a safe format.  In this example, I
 am creating an encrypted remote for my movies directory.  I will be using a different remote for each directory so that I can
 keep things organized.  This example will encrypt every file and directory name except the root name (movies).  Having multiple
 remotes takes time to setup, but in my opinion it is a very effective way of understanding what is going on and keeping things
 organized.
+
 3. rclone config
    - e/n/d/r/c/s/q> n			(new remote)
    - name> crypt-movies			(name this whatever you like)
@@ -84,23 +100,27 @@ organized.
    - y/e/d> y				(assuming the config looks right, enter yes)
 Now we can run some simple tests to make sure everything is working correctly.  Copy over a small file and view it with each
 remote to see if it is encrypted.
+
 4. touch newfile.txt
    - rclone -q copy newfile.txt crypt-movies:
    - rclone -q ls crypt-movies:
 >	1 newfile.txt
    - rclone -q ls remote:backups/movies:
 >	1 lkjasdf83jhsdfg		(some gibberish, encrypted file name!)
+
 ### Initial Backup
 If you have a lot of data, you probably want to back it all up first before automating the backups. This way you can make
 sure that it all works properly first.  There are a lot of options to rclone commands, and many commands that you can use
 for all of these tasks.  It will list a few of the commands that I use and the options that I chose.  For more details go
 to https://rclone.org/docs/
+
 #### Copy
 - rclone copy
 - rclone \-\-stats=5s \-\-stats\-log\-level NOTICE copy /MEDIA/movies crypt-movies:
   - This command (I run it in a tmux sessions) will copy all files in /MEDIA/movies to the remote (backups/movies) and
     will encrypt all the file names.  It will print out stats about the copy every five seconds so that you can see its
     progress.
+    
 ### Automation
 Automation of this task is quite simple.  In this repository I provided a couple of simple files that I use.  The effect
 of these files is that every night at midnight rclone attempts to do a copy of each of my remotes and writes the results
